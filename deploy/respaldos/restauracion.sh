@@ -18,9 +18,21 @@
 #
 # Por eso este script:
 #
-#   - NUNCA hace DROP. Nunca. Ni de la base, ni de una tabla, ni de un esquema.
-#     Un `DROP DATABASE` es irrecuperable y no hay version de este script que lo
-#     habilite.
+#   - NUNCA hace `DROP DATABASE`, ni `dropdb`, ni ninguna version de este script
+#     lo habilite. Esa es la operacion irrecuperable.
+#
+#     CORRECCION DEL 18-10-2026: este encabezado decia antes "NUNCA hace DROP.
+#     Nunca. Ni de la base, ni de una tabla, ni de un esquema." Eso era FALSO a
+#     medias, y el peligroso es el matiz. La restauracion usa
+#     `pg_restore --clean --if-exists`, que internamente emite DROP de cada
+#     tabla, indice, vista y funcion antes de recrearlos. Si eso no esta
+#     escrito, quien lea este encabezado cree que el script no destruye nada, y
+#     la primera vez que lo corra con un respaldo equivocado ya es tarde.
+#
+#     La distincion que importa: `--clean` borra OBJETOS dentro de la base, que
+#     es justamente lo que se quiere al restaurar (la base debe quedar como
+#     estaba). Lo que nunca ocurre es que se borre la BASE, porque ahi no hay
+#     forma de volver atras.
 #   - NO SOBRESCRIBE NADA sin `--forzar`. Por omision falla si ya hay datos.
 #   - DEJA EL SERVICIO DETENIDO al terminar. Restaurar con el sistema arriba es
 #     la forma de que alguien escriba en la base a mitad de la restauracion y
@@ -84,7 +96,10 @@ done
 if [ -z "$ARCHIVO" ]; then
     echo "Uso: $0 ARCHIVO.dump --confirmar [--forzar] [--base NOMBRE]"
     echo ""
-    echo "La restauracion RECONSTRUYE la base completa. Nunca hace DROP."
+    echo "La restauracion RECONSTRUYE la base completa."
+echo "Recrea cada objeto del respaldo; dentro de la base eso implica DROP y CREATE,"
+echo "que es lo que deja la base igual que estaba. Lo que NUNCA hace es borrar la"
+echo "BASE: no hay DROP DATABASE, no hay dropdb, y no hay forma de volver atras."
     exit 1
 fi
 

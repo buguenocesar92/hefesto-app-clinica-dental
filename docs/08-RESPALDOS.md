@@ -146,7 +146,7 @@ deploy/respaldos/restauracion.sh ARCHIVO.dump --confirmar --base otra_base
 
 | No hace | Por qué |
 |---|---|
-| **Nunca hace DROP** | ni de la base, ni de un esquema, ni de una tabla. Un `DROP DATABASE` es irrecuperable, y no hay versión de este script que lo habilite |
+| **Nunca hace `DROP DATABASE`** | ni `dropdb`, en ninguna versión de este script. Esa es la operación irrecuperable. <br> **Ojo, matiz importante:** la restauración usa `pg_restore --clean --if-exists`, que internamente emite `DROP` de cada tabla, índice, vista y función **antes de recrearlos**. Eso no es un descuido: es lo que deja la base en el estado en que estaba el respaldo. Lo que nunca se borra es **la base**. Una app que quiera evitarlo por completo debe usar `TRUNCATE` en vez de `--clean`, como hace `apps/peluqueria`. |
 | **No sobreescribe nada** sin `--forzar` | ver más abajo |
 | **No restaura sobre `clinica_dental`** | el nombre de la base de la aplicación está prohibido explícitamente |
 | **No borra el servicio** | lo **detiene**, y lo deja detenido |
