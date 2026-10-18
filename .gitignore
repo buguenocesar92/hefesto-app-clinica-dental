@@ -1,0 +1,73 @@
+# =============================================================================
+# Hefesto Studio — ClinicaDental
+# =============================================================================
+# Este archivo `.gitignore` esta en la RAIZ de la aplicacion y cubre las tres
+# carpetas (api, web, deploy).
+#
+# Las reglas de abajo son las de todas las aplicaciones de Hefesto. Lo que mas
+# importa aca:
+#
+#   - `.env` NUNCA se versiona con valores reales. En esta aplicacion hay dos:
+#     el de la composicion (raiz) y el de Laravel (api/.env).
+#   - `storage/` y `bootstrap/cache/` llevan lo que el sistema escribe, no lo
+#     que se instala.
+#   - `herramientas/` SI se versiona: son las herramientas de verificacion, que
+#     corren sin PHP ni Node y son las que atraparon los errores de escritura.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Dependencias
+# -----------------------------------------------------------------------------
+/node_modules
+/vendor
+
+# -----------------------------------------------------------------------------
+# Configuracion con secretos
+# -----------------------------------------------------------------------------
+.env
+api/.env
+web/.env
+*.key
+
+# -----------------------------------------------------------------------------
+# Laravel
+# -----------------------------------------------------------------------------
+api/storage/*.key
+api/storage/framework/cache/*
+api/storage/framework/sessions/*
+api/storage/framework/views/*
+api/storage/logs/*
+api/bootstrap/cache/*.php
+api/database/*.sqlite
+api/database/*.sqlite-journal
+
+# -----------------------------------------------------------------------------
+# Nuxt
+# -----------------------------------------------------------------------------
+.nuxt
+.output
+.data
+.nitro
+.cache
+
+# -----------------------------------------------------------------------------
+# Pruebas
+# -----------------------------------------------------------------------------
+.phpunit.cache
+.phpunit.result.cache
+/coverage
+
+# -----------------------------------------------------------------------------
+# Sistema
+# -----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+
+# Python (herramientas de verificacion)
+__pycache__/
+*.pyc
+
+# Editores
+.idea
+.vscode

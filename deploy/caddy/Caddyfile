@@ -1,0 +1,61 @@
+# =============================================================================
+# Caddy de ClinicaDental
+# =============================================================================
+# Un solo dominio publico. Termina TLS y reparte:
+#   /api/*  -> la API de Laravel
+#   /       -> la interfaz de Nuxt
+#
+# POR QUE UN DOMINIO Y NO DOS
+# ---------------------------
+# La cookie de sesion tiene que viajar del navegador a la interfaz y de la
+# interfaz a la API en el mismo origen. Con dos subdominios habria que hacer
+# una cookie de dominio compartido, que es mas fragil y mas dificil de
+# auditar. Y en un consultorio, donde la sesion abre el historial odontologico,
+# "mas dificil de auditar" es exactamente el argumento que importa.
+#
+# NOTA: en Caddy el bloque global de respuesta es `header`, con dos espacios.
+# =============================================================================
+
+{
+	email {$ACME_EMAIL:admin@hefesto.cl}
+}
+
+{$DOMINIO:clinica.ejemplo.cl} {
+	encode zstd gzip
+
+	# Cabeceras de endurecimiento. `Strict-Transport-Security` solo tiene
+	# sentido con TLS, asi que se agrega aca y no en el servidor de la API.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+		# La aplicacion no carga recursos de terceros: la politica lo refleja.
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	}
+
+	@api path /api/*
+
+	handle @api {
+		# `no-store` tambien viene de la API. Se repite aca para que ninguna
+		# capa intermedia (CDN, proxy del estudio) guarde una respuesta que
+		# contiene informacion de salud.
+		header Cache-Control "no-store, no-cache, must-revalidate, private"
+
+		reverse_proxy api:8000
+	}
+
+	handle {
+		header Cache-Control "no-store, no-cache, must-revalidate, private"
+
+		reverse_proxy web:3000
+	}
+
+	log {
+		output stdout
+		format json
+		# El registro de acceso de Caddy NO guarda cuerpos ni cookies: solo
+		# metodo, ruta, estado y tiempo.
+	}
+}

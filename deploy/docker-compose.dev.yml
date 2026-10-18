@@ -1,0 +1,150 @@
+# =============================================================================
+# Hefesto Studio — ClinicaDental: desarrollo
+# =============================================================================
+# Postgres, Redis, API, interfaz y Caddy, con puertos atados a 127.0.0.1.
+#
+# POR QUE LOS PUERTOS ESTAN ATADOS A 127.0.0.1
+# --------------------------------------------
+# En desarrollo uno abre `http://localhost:3000` en el navegador y ya. Atar el
+# puerto a la interfaz de loopback hace que ademas no quede expuesto a la red
+# local: una maquina de desarrollo en una cafeteria con la misma red no es un
+# lugar para una base con historias clinicas de ejemplo.
+#
+# QUE SE USA Y QUE NO
+# -------------------
+# `docker-compose.dev.yml` usa la MISMA imagen que produccion. La unica
+# diferencia es que `php.ini` se sobrescribe para no cachear el codigo entre
+# recargas, y que los puertos se publican en localhost. No hay un build de
+# desarrollo separado, porque en las demas aplicaciones de Hefesto fue
+# justamente el origen de diferencias que aparecian solo en produccion.
+# =============================================================================
+
+name: clinica-dental-dev
+
+services:
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL.
+  #
+  # DOS ROLES, Y NO UNO
+  # -------------------
+  # `POSTGRES_USER` es el rol de ARRANQUE: la imagen oficial ejecuta
+  # `initdb --username="$POSTGRES_USER"` y ese rol nace superusuario. Solo
+  # se usa para crear la base y para las tareas administrativas. La
+  # aplicacion NUNCA conecta con el.
+  #
+  # El rol de la aplicacion (`DB_USERNAME`) lo crea
+  # `deploy/postgres/inicializar-rol.sh` al inicializar el volumen, con
+  # NOSUPERUSER y NOBYPASSRLS explicitos. Le da la propiedad de la base
+  # para que las migraciones de Laravel puedan crear el esquema.
+  #
+  # POR QUE IMPORTA: la documentacion de PostgreSQL 18 dice que los
+  # superusuarios "always bypass the row security system", y que
+  # `FORCE ROW LEVEL SECURITY` sujeta solo al DUENO de la tabla, no al
+  # superusuario. Con un solo rol las politicas no se aplicarian y el
+  # aislamiento entre empresas seria decorativo. Ver docs/03.
+  # -------------------------------------------------------------------------
+  postgres:
+    image: "docker.io/library/postgres:18.6"
+    env_file:
+      - ../api/.env
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-clinica_dental}
+      POSTGRES_USER: ${DB_ADMIN_USERNAME:-clinica_dental_admin}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?falta DB_ADMIN_PASSWORD en el .env}
+      # Rol con el que conecta la aplicacion. Lo crea el script de arranque.
+      APP_DB_ROLE: ${DB_USERNAME:-clinica_dental}
+      APP_DB_PASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD en api/.env}
+    ports:
+      # Solo loopback. Ver la nota de arriba.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+      - ./postgres/inicializar-rol.sh:/docker-entrypoint-initdb.d/inicializar-rol.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-clinica_dental} -d ${DB_DATABASE:-clinica_dental}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: "docker.io/library/redis:8.8.3-alpine"
+    command:
+      - redis-server
+      - --loglevel
+      - notice
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api/Dockerfile
+    env_file:
+      - ../api/.env
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      # En desarrollo se quiere ver el codigo recien escrito. Con
+      # `validate_timestamps = 0` el contenedor quedaria sirviendo la version
+      # anterior hasta que se reinicie, que es la forma clasica de perder media
+      # hora.
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: "1"
+      PHP_OPCACHE_REVALIDATE_FREQ: "0"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../api:/var/www/html
+      - storage_dev:/var/www/html/storage
+      - bootstrap_dev:/var/www/html/bootstrap/cache
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web/Dockerfile
+    environment:
+      NUXT_API_BASE: http://api:8000
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+      NODE_ENV: development
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ../web:/app
+      - web_nuxt:/app/.nuxt
+
+  caddy:
+    image: "docker.io/library/caddy:2.11.7-alpine"
+    environment:
+      DOMINIO: ${DOMINIO:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@hefesto.cl}
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - api
+      - web
+
+volumes:
+  postgres_dev:
+    name: clinica_dental_dev_postgres
+  storage_dev:
+    name: clinica_dental_dev_storage
+  bootstrap_dev:
+    name: clinica_dental_dev_bootstrap
+  web_nuxt:
+    name: clinica_dental_dev_nuxt

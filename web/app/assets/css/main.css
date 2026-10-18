@@ -1,0 +1,634 @@
+/*
+ * ClinicaDental — hoja de estilos unica.
+ *
+ * POR QUE UNA SOLA HOJA Y NO UN FRAMEWORK
+ * --------------------------------------
+ * La aplicacion tiene nueve pantallas y ninguna necesita un sistema de
+ * diseno. Una hoja con variables CSS es suficiente, se lee entera en un rato y
+ * no hay una dependencia mas que actualizar cuando aparezca un problema de
+ * seguridad.
+ *
+ * LA PALETA
+ * ---------
+ * Pensada para una pantalla que puede quedar abierta a la vista en el
+ * mostrador, con el paciente sentado al lado. Los colores de riesgo (alergia
+ * grave, condicion bloqueante) son los unicos que usan color fuerte, para que la
+ * vista se vaya ahi sin que haya que buscarla.
+ */
+
+:root {
+    --fondo: #f8fafc;
+    --superficie: #ffffff;
+    --borde: #e2e8f0;
+    --texto: #0f172a;
+    --texto-suave: #64748b;
+
+    --primario: #2563eb;
+    --primario-oscuro: #1d4ed8;
+    --primario-suave: #eff6ff;
+
+    --riesgo: #dc2626;
+    --riesgo-suave: #fef2f2;
+    --alerta: #b45309;
+    --alerta-suave: #fffbeb;
+    --exito: #15803d;
+    --exito-suave: #f0fdf4;
+
+    --radio: 8px;
+    --sombra: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --tipografia: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+        Arial, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: var(--tipografia);
+    font-size: 15px;
+    line-height: 1.5;
+    /* Un consultorio trabaja con raton y con pantalla tactil. */
+    -webkit-font-smoothing: antialiased;
+}
+
+/* -----------------------------------------------------------------------------
+ * Estructura
+ * -------------------------------------------------------------------------- */
+
+.aplicacion {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.cabecera {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 20px;
+    background: var(--superficie);
+    border-bottom: 1px solid var(--borde);
+    flex-wrap: wrap;
+}
+
+.cabecera__marca {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.cabecera__nombre {
+    font-weight: 700;
+    color: var(--texto);
+    text-decoration: none;
+}
+
+.cabecera__subtitulo {
+    font-size: 11px;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.cabecera__menu {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.cabecera__menu a {
+    padding: 6px 12px;
+    border-radius: var(--radio);
+    color: var(--texto-suave);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.cabecera__menu a:hover {
+    background: var(--primario-suave);
+    color: var(--primario-oscuro);
+}
+
+.cabecera__menu a.activo {
+    background: var(--primario);
+    color: #ffffff;
+}
+
+.cabecera__persona {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--texto-suave);
+}
+
+.cabecera__rol {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--primario-suave);
+    color: var(--primario-oscuro);
+    font-weight: 600;
+}
+
+.contenido {
+    flex: 1;
+    padding: 20px;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.pie {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--borde);
+    background: var(--superficie);
+    font-size: 12px;
+    color: var(--texto-suave);
+    flex-wrap: wrap;
+}
+
+/*
+ * El aviso del pie no es decoracion: dice que el sistema registra los accesos.
+ * Se mantiene visible, en gris, abajo de todo.
+ */
+.pie__aviso {
+    font-style: italic;
+}
+
+/* -----------------------------------------------------------------------------
+ * Tipografia y bloques
+ * -------------------------------------------------------------------------- */
+
+h1 {
+    font-size: 22px;
+    margin: 0 0 16px;
+}
+
+h2 {
+    font-size: 17px;
+    margin: 0 0 12px;
+}
+
+h3 {
+    font-size: 15px;
+    margin: 0 0 8px;
+}
+
+.panel {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.ayuda {
+    color: var(--texto-suave);
+    font-size: 13px;
+    margin: 4px 0 12px;
+}
+
+/* -----------------------------------------------------------------------------
+ * Avisos
+ * -------------------------------------------------------------------------- */
+
+.aviso,
+.error {
+    padding: 10px 14px;
+    border-radius: var(--radio);
+    margin-bottom: 12px;
+    border: 1px solid transparent;
+}
+
+.aviso {
+    background: var(--exito-suave);
+    border-color: #bbf7d0;
+    color: var(--exito);
+}
+
+.error {
+    background: var(--riesgo-suave);
+    border-color: #fecaca;
+    color: var(--riesgo);
+}
+
+/*
+ * Un error que viene del servidor se muestra tal cual: el mensaje lo escribio el
+ * dominio y es el unico que sabe por que no se puede hacer lo que se intentaba.
+ */
+.error__detalle {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--texto-suave);
+}
+
+/* -----------------------------------------------------------------------------
+ * Botones
+ * -------------------------------------------------------------------------- */
+
+.boton {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid var(--primario);
+    border-radius: var(--radio);
+    background: var(--primario);
+    color: #ffffff;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.boton:hover:not(:disabled) {
+    background: var(--primario-oscuro);
+    border-color: var(--primario-oscuro);
+}
+
+.boton:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.boton--chico {
+    padding: 4px 10px;
+    font-size: 13px;
+}
+
+.boton--secundario {
+    background: var(--superficie);
+    color: var(--primario-oscuro);
+}
+
+.boton--peligro {
+    background: var(--superficie);
+    color: var(--riesgo);
+    border-color: var(--riesgo);
+}
+
+/* -----------------------------------------------------------------------------
+ * Formularios
+ * -------------------------------------------------------------------------- */
+
+.campo {
+    margin-bottom: 12px;
+}
+
+.campo label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: var(--texto-suave);
+    font-weight: 600;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--superficie);
+    color: var(--texto);
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+    outline: 2px solid var(--primario-suave);
+    border-color: var(--primario);
+}
+
+.campo--linea {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.campo--linea > .campo {
+    flex: 1;
+    min-width: 160px;
+}
+
+/* -----------------------------------------------------------------------------
+ * Tablas
+ * -------------------------------------------------------------------------- */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+th,
+td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--borde);
+    vertical-align: top;
+}
+
+th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-suave);
+    background: var(--fondo);
+}
+
+tbody tr:hover {
+    background: var(--primario-suave);
+}
+
+/* -----------------------------------------------------------------------------
+ * Estados y etiquetas
+ * -------------------------------------------------------------------------- */
+
+.etiqueta {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--fondo);
+    color: var(--texto-suave);
+    border: 1px solid var(--borde);
+}
+
+.etiqueta--riesgo {
+    background: var(--riesgo-suave);
+    color: var(--riesgo);
+    border-color: #fecaca;
+}
+
+.etiqueta--alerta {
+    background: var(--alerta-suave);
+    color: var(--alerta);
+    border-color: #fde68a;
+}
+
+.etiqueta--exito {
+    background: var(--exito-suave);
+    color: var(--exito);
+    border-color: #bbf7d0;
+}
+
+.vacio {
+    padding: 24px;
+    text-align: center;
+    color: var(--texto-suave);
+    font-size: 14px;
+}
+
+/* -----------------------------------------------------------------------------
+ * Panel: tarjetas de revision
+ * -------------------------------------------------------------------------- */
+
+.rejillas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-left-width: 4px;
+    border-left-style: solid;
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    padding: 14px;
+}
+
+.tarjeta__titulo {
+    font-size: 13px;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 6px;
+}
+
+.tarjeta__cifra {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.tarjeta__nota {
+    font-size: 13px;
+    color: var(--texto-suave);
+    margin: 6px 0 0;
+}
+
+.tarjeta--ok {
+    border-left-color: var(--exito);
+}
+
+.tarjeta--alerta {
+    border-left-color: var(--alerta);
+}
+
+.tarjeta--riesgo {
+    border-left-color: var(--riesgo);
+}
+
+/* -----------------------------------------------------------------------------
+ * EL MAPA DENTAL
+ * -------------------------------------------------------------------------- */
+
+/*
+ * El mapa se dibuja al reves que el paciente, como manda la notacion FDI: el
+ * cuadrante 1 (superior derecho del paciente) queda arriba a la izquierda.
+ */
+.mapa {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(48px, 1fr));
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.mapa__linea {
+    display: contents;
+}
+
+.pieza {
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--superficie);
+    padding: 6px 2px;
+    text-align: center;
+    cursor: pointer;
+    font-family: inherit;
+    min-height: 62px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+}
+
+.pieza:hover {
+    border-color: var(--primario);
+}
+
+.pieza__numero {
+    font-size: 11px;
+    color: var(--texto-suave);
+}
+
+.pieza__estado {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.pieza--fuera {
+    background: var(--primario-suave);
+}
+
+.pieza--riesgo {
+    background: var(--riesgo-suave);
+    border-color: #fecaca;
+}
+
+.pieza--reemplazo {
+    background: var(--alerta-suave);
+    border-color: #fde68a;
+}
+
+.pieza--sana {
+    background: var(--exito-suave);
+}
+
+.mapa__leyenda {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin-top: 8px;
+}
+
+.mapa__arcada {
+    text-align: center;
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin: 8px 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* -----------------------------------------------------------------------------
+ * Agenda
+ * -------------------------------------------------------------------------- */
+
+.cita {
+    display: flex;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--borde);
+    border-left-width: 4px;
+    border-radius: var(--radio);
+    margin-bottom: 8px;
+    background: var(--superficie);
+}
+
+.cita--riesgo {
+    border-left-color: var(--riesgo);
+    background: var(--riesgo-suave);
+}
+
+.cita--anulada {
+    opacity: 0.6;
+    border-left-color: var(--texto-suave);
+}
+
+.cita__hora {
+    font-weight: 700;
+    min-width: 96px;
+    font-variant-numeric: tabular-nums;
+}
+
+.cita__cuerpo {
+    flex: 1;
+}
+
+.cita__paciente {
+    font-weight: 600;
+}
+
+.cita__detalle {
+    font-size: 13px;
+    color: var(--texto-suave);
+}
+
+/*
+ * El aviso de riesgo va DENTRO de la cita, no aparte. Un aviso aparte se lee
+ * una vez y despues deja de leerse.
+ */
+.obstaculo {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: var(--riesgo);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------------
+ * Ingreso
+ * -------------------------------------------------------------------------- */
+
+.ingreso {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ingreso__caja {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    padding: 32px;
+    max-width: 420px;
+    text-align: center;
+}
+
+.ingreso__caja h1 {
+    margin-bottom: 8px;
+}
+
+.ingreso__caja p {
+    color: var(--texto-suave);
+    font-size: 14px;
+}
+
+@media (max-width: 720px) {
+    .mapa {
+        grid-template-columns: repeat(8, minmax(38px, 1fr));
+    }
+
+    .pieza {
+        min-height: 54px;
+    }
+}
