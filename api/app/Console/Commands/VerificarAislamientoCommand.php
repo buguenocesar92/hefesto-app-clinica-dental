@@ -32,18 +32,28 @@ use Throwable;
  *
  * QUE COMPRUEBA, EN ORDEN
  * -----------------------
- *   1. Que las diecisiete tablas de negocio tengan RLS FORZADO (no solo
+ *   1. Que el rol con el que conecta la aplicacion NO sea superusuario ni
+ *      tenga BYPASSRLS. Va primero, y antes de escribir nada.
+ *   2. Que las diecisiete tablas de negocio tengan RLS FORZADO (no solo
  *      habilitado: forzado, que es lo que hace que las politicas apliquen
  *      tambien al dueno de la tabla, que es el mismo usuario con el que se
  *      conecta Laravel).
- *   2. Que exista la politica de aislamiento en cada una.
- *   3. Que un consultorio no vea filas de otro, ni por clave primaria.
- *   4. Que no se pueda escribir una fila declarando otro consultorio
+ *   3. Que exista la politica de aislamiento en cada una.
+ *   4. Que un consultorio no vea filas de otro, ni por clave primaria.
+ *   5. Que no se pueda escribir una fila declarando otro consultorio
  *      (`WITH CHECK`).
- *   5. Que una consulta SIN contexto falle, en vez de devolver cero filas.
+ *   6. Que una consulta SIN contexto falle, en vez de devolver cero filas.
  *      Este ultimo es el mas importante: si `app_tenant_id()` devolviera NULL en
  *      vez de lanzar excepcion, la ausencia de contexto seria indistinguible de
  *      "no hay nada", y el fallo seria silencioso.
+ *
+ * POR QUE EL ROL VA PRIMERO
+ * ------------------------
+ * Con un rol superusuario, o con BYPASSRLS, PostgreSQL ignora todas las
+ * politicas: `FORCE ROW LEVEL SECURITY` sujeta al dueno de la tabla, pero no al
+ * superusuario. Las demas comprobaciones seguirian dando verde, porque todas se
+ * ejecutan con ese mismo rol. Por eso se comprueba solo y directo contra
+ * `pg_roles`, sin pasar por los datos de la aplicacion.
  */
 class VerificarAislamientoCommand extends Command
 {
@@ -82,6 +92,14 @@ class VerificarAislamientoCommand extends Command
 
     public function handle(ContextoTenant $contexto): int
     {
+        // El rol va PRIMERO, antes de mirar las tablas y, sobre todo, antes de
+        // escribir las filas temporales. Con un rol que salta RLS, esas filas
+        // se escribirian en una base sin aislamiento y el resto de las
+        // comprobaciones pasarian en verde sin estar mirando nada.
+        if (! $this->revisarRol()) {
+            return self::FAILURE;
+        }
+
         $this->components->info('Revisando que las tablas de negocio tengan RLS forzado.');
 
         if (! $this->revisarTablas()) {
@@ -94,6 +112,73 @@ class VerificarAislamientoCommand extends Command
         ));
 
         return $this->revisarAislamientoReal($contexto);
+    }
+
+    /**
+     * QUE EL ROL CONECTADO NO SE SALTE LAS POLITICAS
+     * -----------------------------------------------
+     * Consulta `pg_roles` directamente por el nombre del rol y NO depende de
+     * que la base tenga datos. Antes el comando no miraba el rol en absoluto:
+     * lo detectaba solo de forma indirecta, por la lectura cruzada entre dos
+     * consultorios.
+     *
+     * Es el fallo mas grave y el mas silencioso: un superusuario, o un rol con
+     * `BYPASSRLS`, ignora todas las politicas de Row Level Security, y
+     * `FORCE ROW LEVEL SECURITY` sujeta al dueno de la tabla pero NO al
+     * superusuario. Con ese rol, un consultorio veria las fichas y los
+     * odontogramas de los demas, sin error y sin aviso.
+     */
+    private function revisarRol(): bool
+    {
+        try {
+            $rol = DB::selectOne(
+                'SELECT rolname AS nombre, rolsuper AS superusuario, rolbypassrls AS bypass
+                 FROM pg_roles
+                 WHERE rolname = current_user',
+            );
+        } catch (Throwable $e) {
+            $this->components->error('No se pudo leer el rol de la conexion: ' . $e->getMessage());
+            $this->components->error('Sin ese dato no se puede afirmar nada sobre el aislamiento.');
+
+            return false;
+        }
+
+        if ($rol === null) {
+            $this->components->error('No se pudo determinar el rol de la conexion.');
+
+            return false;
+        }
+
+        if ($rol->superusuario) {
+            $this->components->error("El rol \"{$rol->nombre}\" ES SUPERUSUARIO.");
+            $this->components->error('Un superusuario ignora TODAS las politicas de Row Level Security.');
+            $this->components->error('`FORCE ROW LEVEL SECURITY` sujeta al dueno de la tabla, pero NO al');
+            $this->components->error('superusuario: con este rol el aislamiento entre consultorios no existe.');
+            $this->components->error('Que hacer: `POSTGRES_USER` debe ser el rol de arranque');
+            $this->components->error('`clinica_dental_admin`, que la aplicacion nunca usa, y el rol de la');
+            $this->components->error('aplicacion tiene que estar creado NOSUPERUSER NOBYPASSRLS en');
+            $this->components->error('`deploy/postgres/inicializar-rol.sh`.');
+            $this->components->error('Patron de referencia: apps/almacen/deploy/postgres/inicializar-rol.sh');
+
+            return false;
+        }
+
+        if ($rol->bypass) {
+            $this->components->error("El rol \"{$rol->nombre}\" tiene BYPASSRLS.");
+            $this->components->error('Con BYPASSRLS, PostgreSQL ignora TODAS las politicas de Row Level Security,');
+            $this->components->error('aunque las tablas tengan `FORCE ROW LEVEL SECURITY` puesto.');
+            $this->components->error('Que hacer: el mismo de arriba. `POSTGRES_USER` debe ser el rol de');
+            $this->components->error('arranque `clinica_dental_admin`, que la aplicacion nunca usa, y el rol de');
+            $this->components->error('la aplicacion tiene que estar creado NOSUPERUSER NOBYPASSRLS en');
+            $this->components->error('`deploy/postgres/inicializar-rol.sh`.');
+            $this->components->error('Patron de referencia: apps/almacen/deploy/postgres/inicializar-rol.sh');
+
+            return false;
+        }
+
+        $this->components->info("El rol \"{$rol->nombre}\" no es superusuario ni tiene BYPASSRLS.");
+
+        return true;
     }
 
     /**

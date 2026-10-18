@@ -158,10 +158,11 @@ porque hay una vista que sugiere otra cosa:
 php artisan clinica:verificar-aislamiento
 ```
 
-Comprueba, sin pasar por la aplicación, que las diecisiete tablas tienen RLS
-forzado, que la política existe en cada una, que un consultorio no ve filas de
-otro (ni por clave primaria), que no se puede escribir declarando otro
-consultorio, y que una consulta sin contexto **falla**.
+Comprueba, sin pasar por la aplicación, que el rol conectado no sea
+superusuario ni tenga `BYPASSRLS` (primero, antes de escribir nada), que las
+diecisiete tablas tienen RLS forzado, que la política existe en cada una, que un
+consultorio no ve filas de otro (ni por clave primaria), que no se puede
+escribir declarando otro consultorio, y que una consulta sin contexto **falla**.
 
 Escribe filas temporales y las borra al final. **No debe correrse contra una base
 con datos reales de pacientes.**
@@ -449,16 +450,26 @@ de confusión al leer la documentación de una con la de otra.
 La opción `--consultorio` recibe el identificador de un consultorio existente
 para usarlo como contexto A; si no se indica, se crea una fila temporal.
 
-**Una diferencia que hay que conocer:** este comando **no** consulta `pg_roles`
-para revisar los atributos del rol. Lo que hace es comprobar que las tablas
-protegidas tengan RLS activada y forzada, y hacer una **lectura cruzada**: el
-consultorio A no debe poder ver el paciente del consultorio B, ni siquiera
-preguntando por su identificador.
+**Lo que faltaba y se corrigió:** este comando **no consultaba `pg_roles`**.
+Lo que hacía era comprobar que las tablas protegidas tengan RLS activada y
+forzada, y hacer una **lectura cruzada**: el consultorio A no debe poder ver el
+paciente del consultorio B, ni siquiera preguntando por su identificador.
 
-Esa lectura cruzada detecta un rol equivocado de forma indirecta: si la conexión
-fuera superusuario, A vería al paciente de B y el comando fallaría. Aun así, la
-comprobación directa de `pg_roles` no está automatizada y conviene hacerla a
-mano.
+Esa lectura cruzada detectaba un rol equivocado de forma indirecta: si la
+conexión fuera superusuario, A vería al paciente de B y el comando fallaría.
+Aun así, la comprobación directa de `pg_roles` **no estaba automatizada** y
+había que hacerla a mano.
+
+**Ahora el comando consulta `pg_roles`**, directo por el nombre del rol, y es la
+**primera** comprobación: antes de revisar las tablas y, sobre todo, antes de
+escribir las filas temporales. Escribirlas con un rol que salta RLS sería
+escribir en una base sin aislamiento. Falla si `rolsuper` o `rolbypassrls`
+están activos, y el mensaje explica qué se detectó, por qué eso anula el
+aislamiento, qué hacer (`POSTGRES_USER` debe ser el rol de arranque
+`clinica_dental_admin`, que la aplicación nunca usa, y el rol de la aplicación
+se crea `NOSUPERUSER NOBYPASSRLS` en `deploy/postgres/inicializar-rol.sh`) y
+dónde está el patrón de referencia
+(`apps/almacen/deploy/postgres/inicializar-rol.sh`).
 
 **Este comando no se ha ejecutado.** En el equipo donde se escribió este cambio
 no había PostgreSQL ni Docker. El diseño es correcto y está sostenido en la
